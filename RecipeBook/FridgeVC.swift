@@ -12,7 +12,15 @@ import GoogleSignIn
 
 class FridgeVC: UIViewController {
     
-    var ingredientsArray = [String]()
+    struct ingredientCell {
+        var ingredient: String
+        var postedBy: String
+        var ingredientKey: String
+    }
+    
+    var ingredientsArray = [ingredientCell]()
+    var ingredientsRef: FIRDatabaseReference!
+    var user = ""
 
     @IBOutlet weak var editButton: UIBarButtonItem!
     @IBOutlet weak var tableView: UITableView!
@@ -20,7 +28,22 @@ class FridgeVC: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
+        user = FIRAuth.auth()!.currentUser!.displayName!
+        
+        self.ingredientsRef = FIRDatabase.database().reference(withPath: "ingredients")
+        
+        self.ingredientsRef.observe(.value, with: { snapshot in
+            self.ingredientsArray = []
+            for child in snapshot.children {
+                let ingredientSnapshot = child as! FIRDataSnapshot
+                let ingredientValue = ingredientSnapshot.value as! [String: AnyObject]
+                let ingredientKey = ingredientSnapshot.key
+                let newIngredient = ingredientCell(ingredient: ingredientValue["ingredient"] as! String, postedBy: self.user, ingredientKey: ingredientKey)
+                self.ingredientsArray.append(newIngredient)
+            }
+        })
+        
         tableView.delegate = self
         tableView.dataSource = self
     }
@@ -37,7 +60,16 @@ class FridgeVC: UIViewController {
     
     @IBAction func addIngredient(_ sender: UIButton) {
         if let ingredient = textField.text {
-            ingredientsArray.append(ingredient)
+            let index = ingredientsArray.count
+            ingredientsRef = FIRDatabase.database().reference(withPath: "ingredients")
+            let ingredientKey = self.ingredientsRef.childByAutoId().key
+            
+            ingredientsArray.append(ingredientCell(ingredient: ingredient, postedBy: user, ingredientKey: ingredientKey))
+            
+            ingredientsRef = FIRDatabase.database().reference(withPath: "ingredients")
+            
+            self.ingredientsRef.child(ingredientsArray[index].ingredientKey).setValue(["ingredient": ingredientsArray[index].ingredient, "postedBy": ingredientsArray[index].postedBy])
+            
             tableView.reloadData()
             textField.text = ""
         }
@@ -53,24 +85,19 @@ extension FridgeVC: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-        cell.textLabel?.text = ingredientsArray[indexPath.row]
+        cell.textLabel?.text = ingredientsArray[indexPath.row].ingredient
+        cell.detailTextLabel?.text = ingredientsArray[indexPath.row].postedBy
         return cell
-    }
-    
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        return 30
     }
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         
         if editingStyle == .delete {
+            ingredientsRef = FIRDatabase.database().reference(withPath: "ingredients")
             ingredientsArray.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .fade)
+            self.ingredientsRef.child(ingredientsArray[indexPath.row].ingredientKey).removeValue()
             tableView.reloadData()
-        }
-        
-        if editingStyle == .insert {
-            print("Figure Out Dis Shit")
         }
         
     }

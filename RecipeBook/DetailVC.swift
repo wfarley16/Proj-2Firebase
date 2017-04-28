@@ -17,6 +17,7 @@ class DetailVC: UIViewController {
     var ingredientsArray = [String]()
     
     var recipesRef: FIRDatabaseReference!
+    var ingredientsRef: FIRDatabaseReference!
     
     var userDisplayName = ""
     
@@ -43,18 +44,34 @@ class DetailVC: UIViewController {
                 newRecipe.title = recipeValue["title"] as! String
                 newRecipe.ingredients = recipeValue["ingredients"] as! String
                 newRecipe.imageURL = recipeValue["imageURL"] as! String
+                newRecipe.href = recipeValue["href"] as! String
                 newRecipe.recipeKey = recipeSnapshot.key
                 self.recipesArray.append(newRecipe)
             }
-            self.recipePicker.reloadAllComponents()
+            
+            if self.recipesArray.count == 0 {
+                self.performSegue(withIdentifier: "ToListVC", sender: nil)
+            } else {
+                self.refreshUI()
+            }
+            
+            self.ingredientsRef = FIRDatabase.database().reference(withPath: "ingredients")
+            
+            self.ingredientsRef.observe(.value, with: { snapshot in
+                self.ingredientsArray = []
+                for child in snapshot.children {
+                    let ingredientSnapshot = child as! FIRDataSnapshot
+                    let ingredientValue = ingredientSnapshot.value as! [String: AnyObject]
+                    let newIngredient = ingredientValue["ingredient"] as! String
+                    print(newIngredient)
+                    self.ingredientsArray.append(newIngredient)
+                }
+                
+            self.conditionalFormat()
+
+            })
         })
         
-        if recipesArray.count == 0 {
-            performSegue(withIdentifier: "ToListVC", sender: nil)
-        } else {
-            refreshUI()
-        }
-
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -64,6 +81,25 @@ class DetailVC: UIViewController {
             let displayName = FIRAuth.auth()?.currentUser?.displayName
         } else {
             performSegue(withIdentifier: "ToSignIn", sender: nil)
+        }
+    }
+    
+    func conditionalFormat() {
+        if self.ingredientsArray.count > 0 {
+            var index = 0
+            let ingredientsInRecipe = self.recipesArray[self.pickerIndex].ingredients.components(separatedBy: ", ")
+            
+            for i in 0...ingredientsInRecipe.count-1 {
+                if self.ingredientsArray.contains(ingredientsInRecipe[i]) {
+                    index += 1
+                }
+            }
+            
+            if index == ingredientsInRecipe.count {
+                self.titleLabel.textColor = UIColor.black
+            } else {
+                self.titleLabel.textColor = UIColor.red
+            }
         }
     }
     
@@ -85,6 +121,7 @@ class DetailVC: UIViewController {
         titleLabel.text = recipesArray[pickerIndex].title
         ingredientsLabel.text = recipesArray[pickerIndex].ingredients
         
+        print("Link should be printed next")
         print(recipesArray[pickerIndex].href)
         
         if recipesArray[pickerIndex].href == "Not Available" {
@@ -105,11 +142,6 @@ class DetailVC: UIViewController {
             targetVC.recipesArray = recipesArray
         }
         
-        if segue.identifier == "ToFridgeVC" {
-            let destVC = segue.destination as! FridgeVC
-            destVC.ingredientsArray = ingredientsArray
-        }
-        
     }
     
     @IBAction func unwindToDetailVC(sender: UIStoryboardSegue) {
@@ -125,12 +157,14 @@ class DetailVC: UIViewController {
         }
         
         if let sourceVC = sender.source as? FridgeVC {
-            ingredientsArray = sourceVC.ingredientsArray
+            for i in 0...sourceVC.ingredientsArray.count-1 {
+                ingredientsArray.append(sourceVC.ingredientsArray[i].ingredient)
+            }
         }
         
         refreshUI()
     }
-
+    
     @IBAction func linkButtonPressed(_ sender: UIButton) {
         UIApplication.shared.openURL(URL(string: recipesArray[pickerIndex].href)!)
     }
@@ -157,6 +191,7 @@ extension DetailVC: UIPickerViewDelegate, UIPickerViewDataSource {
     
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         pickerIndex = row
+        self.conditionalFormat()
         refreshUI()
     }
 }
