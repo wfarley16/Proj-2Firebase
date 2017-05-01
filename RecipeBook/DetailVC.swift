@@ -174,6 +174,12 @@ class DetailVC: UIViewController {
         performSegue(withIdentifier: "ToSignIn", sender: nil)
     }
     
+    @IBAction func infoPressed(_ sender: UIButton) {
+        let alertController = UIAlertController(title: "Welcome to Your Recipe Book", message: "Couple Things: if a recipe title appears as red then you don't have all the listed ingredients, you can manage your list of ingredients by pressing What's in My Fridge below. Also, please sign in through Google as that is how we store your recipe book data, and it will allow you to share your recipes with others.", preferredStyle: .alert)
+        let alertAction = UIAlertAction.init(title: "Ok", style: .default, handler: nil)
+        alertController.addAction(alertAction)
+        present(alertController, animated: true, completion: nil)
+    }
 }
 
 extension DetailVC: UIPickerViewDelegate, UIPickerViewDataSource {

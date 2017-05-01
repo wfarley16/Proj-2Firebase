@@ -115,9 +115,10 @@ extension ListVC: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
+            recipesRef = FIRDatabase.database().reference(withPath: "recipes")
+            self.recipesRef.child(recipesArray[indexPath.row].recipeKey).removeValue()
             self.recipesArray.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .fade)
-            self.recipesRef.child(recipesArray[indexPath.row].recipeKey).removeValue()
         }
     }
     

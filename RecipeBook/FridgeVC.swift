@@ -47,7 +47,7 @@ class FridgeVC: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
     }
-        
+    
     @IBAction func editButtonPressed(_ sender: UIBarButtonItem) {
         if tableView.isEditing {
             editButton.title = "Edit"
